@@ -1,0 +1,5 @@
+author: "Eric Mendoza"
+category: "service"
+summary: "Extra API commands for Shared Roster Groups"
+home: "https://github.com/eric-mendoza/ejabberd_mod_offline_post"
+url: "https://github.com/eric-mendoza/ejabberd_mod_offline_post.git"
