@@ -196,8 +196,7 @@ shared_roster_group_parse_query(Host, Group, Query) ->
 filter_groups_existence(Host, Groups) ->
   %% Splits Groups which meet the condition
   lists:partition(
-    fun(Group) -> error /= get_group_opts(Host, Group) end
-    , Groups).
+    fun(Group) -> error /= get_group_opts(Host, Group) end, Groups).
 
 
 get_group_opts(Host1, Group1) ->
