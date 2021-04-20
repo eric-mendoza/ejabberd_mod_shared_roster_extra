@@ -154,19 +154,20 @@ srg_display_group_del(DeleteGroup, DeleteGroupHost, Group, GroupHost) ->
   ok.
 
 srg_set_opts(Label1, Description1, Group, GroupHost) ->
-  ?DEBUG("Setting group options -> Label: ~p, Description: ~p", [Label1, Description1]),
+  ?DEBUG("Setting group options -> Label: ~p, Description: ~p~n", [Label1, Description1]),
   Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
   Label = if Label1 == <<"">> -> [];
-              true -> [{label, Label}]
+              true -> [{label, Label1}]
           end,
-  Description = if Description == <<"">> -> [];
+  Description = if Description1 == <<"">> -> [];
                   true -> [{description, Description1}]
                 end,
   Displayed1 = get_opt(Opts, displayed_groups, []),
   Displayed = if Displayed1 == [] -> [];
                   true -> [{displayed_groups, Displayed1}]
               end,
-  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ Displayed),
+  ?DEBUG("Options: ~p~n", [Label ++ Description ++ Displayed]),
+%%  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ Displayed),
   ok.
 
 mod_options(_) -> [].
