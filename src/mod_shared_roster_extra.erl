@@ -23,8 +23,8 @@
 -include("mod_roster.hrl").
 -include("mod_privacy.hrl").
 -include("ejabberd_sm.hrl").
--include("mod_shared_roster.erl").
 -include_lib("xmpp/include/xmpp.hrl").
+-include("mod_shared_roster.hrl").
 
 -type group_options() :: [{atom(), any()}].
 -callback init(binary(), gen_mod:opts()) -> any().
