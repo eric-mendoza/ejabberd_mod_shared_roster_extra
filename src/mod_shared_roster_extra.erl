@@ -15,7 +15,7 @@
 % Commands API
 -export([
   % Shared roster
-  srg_group_add/4, srg_group_del/4, srg_opts/3
+  srg_display_group_add/4, srg_display_group_del/4, srg_set_opts/4
 ]).
 
 
@@ -108,25 +108,25 @@ cache_nodes(Mod, Host) ->
 
 get_commands_spec() ->
   [
-    #ejabberd_commands{name = srg_group_add, tags = [shared_roster_group],
+    #ejabberd_commands{name = srg_display_group_add, tags = [shared_roster_group],
       desc = "Add group id to the Shared Roster Group display list",
-      module = ?MODULE, function = srg_group_add,
-      args = [{user, binary}, {host, binary}, {group, binary}, {grouphost, binary}],
-      args_example = [<<"group_to_add">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
-      args_desc = ["Username", "User server name", "Group identifier", "Group server name"],
+      module = ?MODULE, function = srg_display_group_add,
+      args = [{displaygroup, binary}, {displaygrouphost, binary}, {group, binary}, {grouphost, binary}],
+      args_example = [<<"group1">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
+      args_desc = ["Group to be added in display list", "Group server name", "Group to modify display list identifier", "Group server name"],
       result = {res, rescode}},
-    #ejabberd_commands{name = srg_group_del, tags = [shared_roster_group],
+    #ejabberd_commands{name = srg_display_group_del, tags = [shared_roster_group],
       desc = "Delete group id from the Shared Roster Group",
-      module = ?MODULE, function = srg_group_del,
-      args = [{user, binary}, {host, binary}, {group, binary}, {grouphost, binary}],
-      args_example = [<<"group_to_delete">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
-      args_desc = ["Username", "User server name", "Group identifier", "Group server name"],
+      module = ?MODULE, function = srg_display_group_del,
+      args = [{displaygroup, binary}, {displaygrouphost, binary}, {group, binary}, {grouphost, binary}],
+      args_example = [<<"group1">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
+      args_desc = ["Group to be removed from display list", "Group server name", "Group to modify display list identifier", "Group server name"],
       result = {res, rescode}},
-    #ejabberd_commands{name = srg_opts, tags = [shared_roster_group],
+    #ejabberd_commands{name = srg_set_opts, tags = [shared_roster_group],
       desc = "Update Shared Roster Group options (name and description)",
-      module = ?MODULE, function = srg_opts,
+      module = ?MODULE, function = srg_set_opts,
       args = [{name, binary}, {description, binary}, {group, binary}, {grouphost, binary}],
-      args_example = [<<"name_to_set">>, <<"description_to_set">>, <<"group3">>, <<"myserver.com">>],
+      args_example = [<<"Group Test Name">>, <<"Group used for testing.">>, <<"group3">>, <<"myserver.com">>],
       args_desc = ["Shared roster group name", "Shared Roster Group description", "Group identifier", "Group server name"],
       result = {res, rescode}}
   ].
@@ -140,20 +140,33 @@ to_list([H|T]) -> [to_list(H)|to_list(T)];
 to_list(E) when is_atom(E) -> atom_to_list(E);
 to_list(E) -> binary_to_list(E).
 
-srg_group_add(NewGroup, NewGroupHost, Group, GroupHost) ->
-  Opts = [],
-  ?DEBUG("Hola Hsing! Agregando grupo.", []),
+srg_display_group_add(NewGroup, NewGroupHost, Group, GroupHost) ->
+  ?DEBUG("Adding group to display list.", []),
+
+  Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
+  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
+  ok.
+
+srg_display_group_del(DeleteGroup, DeleteGroupHost, Group, GroupHost) ->
+  ?DEBUG("Removing group from display list.", []),
+  Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
 %%  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
   ok.
 
-srg_group_del(DeleteGroup, DeleteGroupHost, Group, GroupHost) ->
-  ?DEBUG("Hola Hsing! Quitando displayed grupo.", []),
-  Opts = [],
-%%  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
-  ok.
-
-srg_opts(Host, Group, Opts) ->
-  ?DEBUG("Hola Hsing! Cambiando opciones de grupo.", []),
+srg_set_opts(Label1, Description1, Group, GroupHost) ->
+  ?DEBUG("Setting group options -> Label: ~p, Description: ~p", [Label1, Description1]),
+  Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
+  Label = if Label1 == <<"">> -> [];
+              true -> [{label, Label}]
+          end,
+  Description = if Description == <<"">> -> [];
+                  true -> [{description, Description1}]
+                end,
+  Displayed1 = get_opt(Opts, displayed_groups, []),
+  Displayed = if Displayed1 == [] -> [];
+                  true -> [{displayed_groups, Displayed1}]
+              end,
+  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ Displayed),
   ok.
 
 mod_options(_) -> [].
@@ -196,28 +209,12 @@ shared_roster_group_parse_query(Host, Group, Query) ->
 filter_groups_existence(Host, Groups) ->
   %% Splits Groups which meet the condition
   lists:partition(
-    fun(Group) -> error /= get_group_opts(Host, Group) end, Groups).
+    fun(Group) -> error /= mod_shared_roster:get_group_opts(Host, Group) end, Groups).
 
-
-get_group_opts(Host1, Group1) ->
-  {Host, Group} = split_grouphost(Host1, Group1),
-  Mod = gen_mod:db_mod(Host, ?MODULE),
-  Res = case use_cache(Mod, Host) of
-          true ->
-            ets_cache:lookup(
-              ?GROUP_OPTS_CACHE, {Host, Group},
-              fun() ->
-                case Mod:get_group_opts(Host, Group) of
-                  error -> error;
-                  V -> {cache, V}
-                end
-              end);
-          false ->
-            Mod:get_group_opts(Host, Group)
-        end,
-  case Res of
-    {ok, Opts} -> Opts;
-    error -> error
+get_opt(Opts, Opt, Default) ->
+  case lists:keysearch(Opt, 1, Opts) of
+    {value, {_, Val}} -> Val;
+    false -> Default
   end.
 
 split_grouphost(Host, Group) ->
