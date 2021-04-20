@@ -2,3 +2,4 @@
 /src/mod_shared_roster.erl
 /src/config_page.html
 /src/str.erl
+/src/mod_admin_extra.erl

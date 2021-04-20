@@ -15,7 +15,7 @@
 % Commands API
 -export([
   % Shared roster
-  srg_group_add/4, srg_group_del/4, set_group_opts/3
+  srg_group_add/4, srg_group_del/4, srg_opts/3
 ]).
 
 
@@ -122,12 +122,12 @@ get_commands_spec() ->
       args_example = [<<"group_to_delete">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
       args_desc = ["Username", "User server name", "Group identifier", "Group server name"],
       result = {res, rescode}},
-    #ejabberd_commands{name = srg_group_del, tags = [shared_roster_group],
-      desc = "Delete group id from the Shared Roster Group",
-      module = ?MODULE, function = srg_group_del,
-      args = [{user, binary}, {host, binary}, {group, binary}, {grouphost, binary}],
-      args_example = [<<"group_to_delete">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
-      args_desc = ["Username", "User server name", "Group identifier", "Group server name"],
+    #ejabberd_commands{name = srg_opts, tags = [shared_roster_group],
+      desc = "Update Shared Roster Group options (name and description)",
+      module = ?MODULE, function = srg_opts,
+      args = [{name, binary}, {description, binary}, {group, binary}, {grouphost, binary}],
+      args_example = [<<"name_to_set">>, <<"description_to_set">>, <<"group3">>, <<"myserver.com">>],
+      args_desc = ["Shared roster group name", "Shared Roster Group description", "Group identifier", "Group server name"],
       result = {res, rescode}}
   ].
 
@@ -142,15 +142,18 @@ to_list(E) -> binary_to_list(E).
 
 srg_group_add(NewGroup, NewGroupHost, Group, GroupHost) ->
   Opts = [],
-  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
+  ?DEBUG("Hola Hsing! Agregando grupo.", []),
+%%  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
   ok.
 
 srg_group_del(DeleteGroup, DeleteGroupHost, Group, GroupHost) ->
+  ?DEBUG("Hola Hsing! Quitando displayed grupo.", []),
   Opts = [],
-  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
+%%  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
   ok.
 
-set_group_opts(Host, Group, Opts) ->
+srg_opts(Host, Group, Opts) ->
+  ?DEBUG("Hola Hsing! Cambiando opciones de grupo.", []),
   ok.
 
 mod_options(_) -> [].
