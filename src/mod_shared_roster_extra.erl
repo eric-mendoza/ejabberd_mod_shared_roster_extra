@@ -168,7 +168,7 @@ srg_set_opts(Label1, Description1, Group, GroupHost) ->
                   true -> [{displayed_groups, Displayed1}]
               end,
   ?DEBUG("Options: ~p~n", [Label ++ Description ++ Displayed]),
-%%  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ Displayed),
+  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ Displayed),
   ok.
 
 mod_options(_) -> [].
