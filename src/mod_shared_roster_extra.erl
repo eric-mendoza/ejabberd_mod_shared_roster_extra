@@ -59,7 +59,7 @@ reload(_Host, _NewOpts, _OldOpts) ->
   ok.
 
 depends(_Host, _Opts) ->
-  [].
+  [{mod_shared_roster, hard}].
 
 %%
 %% Cache stuff I dont understand
