@@ -144,19 +144,19 @@ to_list(E) -> binary_to_list(E).
 srg_display_group_add(NewGroup, NewGroupHost, Group, GroupHost) ->
   ?DEBUG("Adding group to display list.", []),
 
-  Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
+  Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
   mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
   ok.
 
 srg_display_group_del(DeleteGroup, DeleteGroupHost, Group, GroupHost) ->
   ?DEBUG("Removing group from display list.", []),
-  Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
+  Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
 %%  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
   ok.
 
 srg_set_opts(Label1, Description1, Group, GroupHost) ->
   ?DEBUG("Setting group options -> Label: ~p, Description: ~p~n", [Label1, Description1]),
-  Opts = mod_shared_roster:get_group_opts(Group, GroupHost),
+  Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
   Label = if Label1 == <<"">> -> [];
               true -> [{label, Label1}]
           end,
