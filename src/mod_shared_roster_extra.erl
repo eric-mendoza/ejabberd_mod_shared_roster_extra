@@ -97,7 +97,8 @@ srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
 %%  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
 %%  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
 
-%%  ?DEBUG("Options: ~p~n", [Label ++ Description ++ DisplayedGroupsOpt]),
+  NewOpts = Label ++ Description ++ DisplayedGroupsOpt,
+  ?DEBUG("Options: ~p~n", [NewOpts]),
 %%  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
 
   ok.
