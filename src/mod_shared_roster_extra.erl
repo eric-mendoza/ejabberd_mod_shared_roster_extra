@@ -87,12 +87,13 @@ srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
   Label = get_opt(Opts, label, []),
   Description = get_opt(Opts, label, []),
   {DisplayedGroups, DisplayedGroupsOpt} = process_displayed_groups(GroupHost, DisplayedGroups1),
+  ?DEBUG("~n#########################~nDisplayed: ~p~n DisplayedOpt: ~p~n", [DisplayedGroups, DisplayedGroupsOpt]),
 
   %% Update displayed groups
-  CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
-  AddedDisplayedGroups =  DisplayedGroups -- CurrentDisplayedGroups,
-  RemovedDisplayedGroups = CurrentDisplayedGroups -- DisplayedGroups,
-  OldMembers = mod_shared_roster:get_group_explicit_users(GroupHost, Group),
+%%  CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
+%%  AddedDisplayedGroups =  DisplayedGroups -- CurrentDisplayedGroups,
+%%  RemovedDisplayedGroups = CurrentDisplayedGroups -- DisplayedGroups,
+%%  OldMembers = mod_shared_roster:get_group_explicit_users(GroupHost, Group),
 %%  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
 %%  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
 
