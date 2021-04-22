@@ -25,12 +25,7 @@
 -include("ejabberd_sm.hrl").
 -include_lib("xmpp/include/xmpp.hrl").
 -include("mod_shared_roster.hrl").
-
--type group_options() :: [{atom(), any()}].
--callback init(binary(), gen_mod:opts()) -> any().
--callback import(binary(), binary(), [binary()]) -> ok.
--callback use_cache(binary()) -> boolean().
--callback cache_nodes(binary()) -> [node()].
+-include("ejabberd_http.hrl").
 
 -optional_callbacks([use_cache/1, cache_nodes/1]).
 
@@ -86,29 +81,23 @@ get_commands_spec() ->
 %%%
 %%% Shared Roster Groups
 %%%
-
-to_list([]) -> [];
-to_list([H|T]) -> [to_list(H)|to_list(T)];
-to_list(E) when is_atom(E) -> atom_to_list(E);
-to_list(E) -> binary_to_list(E).
-
 srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
   ?DEBUG("Adding group to display list.", []),
   Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
   Label = get_opt(Opts, label, []),
   Description = get_opt(Opts, label, []),
-  {DisplayedGroups, DisplayedGroupsOpt} = process_displayed_groups(GroupHost, Group, DisplayedGroups1),
+  {DisplayedGroups, DisplayedGroupsOpt} = process_displayed_groups(GroupHost, DisplayedGroups1),
 
   %% Update displayed groups
   CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
   AddedDisplayedGroups =  DisplayedGroups -- CurrentDisplayedGroups,
   RemovedDisplayedGroups = CurrentDisplayedGroups -- DisplayedGroups,
   OldMembers = mod_shared_roster:get_group_explicit_users(GroupHost, Group),
-  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
-  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
+%%  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
+%%  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
 
-%%  ?DEBUG("Options: ~p~n", [Label ++ Description ++ DisplayedGroupsOpt]),
-  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
+  ?DEBUG("Options: ~p~n", [Label ++ Description ++ DisplayedGroupsOpt]),
+%%  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
 
   ok.
 
@@ -134,9 +123,9 @@ mod_options(_) -> [].
 %% Description: Parses query received
 %% Input: Query formatted as in web admin query to change group options
 %% Output: Tuple with Label, Description, and DispGroups
-process_displayed_groups(Host, Group, DisplayedGroups1) ->
+process_displayed_groups(Host, DisplayedGroups1) ->
   DispGroups1 = str:tokens(DisplayedGroups1, <<"\r\n">>),  %% Split string by \r or \n
-  {DispGroups, WrongDispGroups} = filter_groups_existence(Host, DispGroups1),  %% Find which groups do not exist
+  {DispGroups, _} = filter_groups_existence(Host, DispGroups1),  %% Find which groups do not exist
   DispGroupsOpt = if DispGroups == [] -> [];
                     true -> [{displayed_groups, DispGroups}] %% Create property
                   end,
