@@ -3,3 +3,5 @@
 /src/config_page.html
 /src/str.erl
 /src/mod_admin_extra.erl
+/src/ejabberd_sm.erl
+/src/ejabberd_auth.erl

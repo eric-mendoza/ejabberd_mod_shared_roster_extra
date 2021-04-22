@@ -15,7 +15,7 @@
 % Commands API
 -export([
   % Shared roster
-  srg_display_group_add/4, srg_display_group_del/4, srg_set_opts/4
+  srg_set_displayed_groups/3, srg_set_opts/4
 ]).
 
 
@@ -61,67 +61,18 @@ reload(_Host, _NewOpts, _OldOpts) ->
 depends(_Host, _Opts) ->
   [{mod_shared_roster, hard}].
 
-%%
-%% Cache stuff I dont understand
-%%
--spec init_cache(module(), binary(), gen_mod:opts()) -> ok.
-init_cache(Mod, Host, Opts) ->
-  case use_cache(Mod, Host) of
-    true ->
-      CacheOpts = cache_opts(Opts),
-      ets_cache:new(?GROUP_OPTS_CACHE, CacheOpts),
-      ets_cache:new(?USER_GROUPS_CACHE, CacheOpts),
-      ets_cache:new(?GROUP_EXPLICIT_USERS_CACHE, CacheOpts),
-      ets_cache:new(?SPECIAL_GROUPS_CACHE, CacheOpts);
-    false ->
-      ets_cache:delete(?GROUP_OPTS_CACHE),
-      ets_cache:delete(?USER_GROUPS_CACHE),
-      ets_cache:delete(?GROUP_EXPLICIT_USERS_CACHE),
-      ets_cache:delete(?SPECIAL_GROUPS_CACHE)
-  end.
-
--spec cache_opts(gen_mod:opts()) -> [proplists:property()].
-cache_opts(Opts) ->
-  MaxSize = mod_private_opt:cache_size(Opts),
-  CacheMissed = mod_private_opt:cache_missed(Opts),
-  LifeTime = mod_private_opt:cache_life_time(Opts),
-  [{max_size, MaxSize}, {cache_missed, CacheMissed}, {life_time, LifeTime}].
-
--spec use_cache(module(), binary()) -> boolean().
-use_cache(Mod, Host) ->
-  case erlang:function_exported(Mod, use_cache, 1) of
-    true -> Mod:use_cache(Host);
-    false -> mod_shared_roster_opt:use_cache(Host)
-  end.
-
--spec cache_nodes(module(), binary()) -> [node()].
-cache_nodes(Mod, Host) ->
-  case erlang:function_exported(Mod, cache_nodes, 1) of
-    true -> Mod:cache_nodes(Host);
-    false -> ejabberd_cluster:get_nodes()
-  end.
-
-
-
 %%%
 %%% Register commands
 %%%
 
 get_commands_spec() ->
   [
-    #ejabberd_commands{name = srg_display_group_add, tags = [shared_roster_group],
+    #ejabberd_commands{name = srg_set_displayed_groups, tags = [shared_roster_group],
       desc = "Add group id to the Shared Roster Group display list",
-      module = ?MODULE, function = srg_display_group_add,
-      args = [{displaygroup, binary}, {displaygrouphost, binary}, {group, binary}, {grouphost, binary}],
-      args_example = [<<"group1">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
-      args_desc = ["Group to be added in display list", "Group server name", "Group to modify display list identifier", "Group server name"],
-      result = {res, rescode}},
-    #ejabberd_commands{name = srg_display_group_del, tags = [shared_roster_group],
-      desc = "Delete group id from the Shared Roster Group",
-      module = ?MODULE, function = srg_display_group_del,
-      args = [{displaygroup, binary}, {displaygrouphost, binary}, {group, binary}, {grouphost, binary}],
-      args_example = [<<"group1">>, <<"myserver.com">>, <<"group3">>, <<"myserver.com">>],
-      args_desc = ["Group to be removed from display list", "Group server name", "Group to modify display list identifier", "Group server name"],
+      module = ?MODULE, function = srg_set_displayed_groups,
+      args = [{displayedgroups, binary}, {group, binary}, {grouphost, binary}],
+      args_example = [<<"group1\ngroup2\ngroup3">>, <<"group3">>, <<"myserver.com">>],
+      args_desc = ["Groups to be set as display list", "Group to modify display list identifier", "Group server name"],
       result = {res, rescode}},
     #ejabberd_commands{name = srg_set_opts, tags = [shared_roster_group],
       desc = "Update Shared Roster Group options (name and description)",
@@ -141,17 +92,24 @@ to_list([H|T]) -> [to_list(H)|to_list(T)];
 to_list(E) when is_atom(E) -> atom_to_list(E);
 to_list(E) -> binary_to_list(E).
 
-srg_display_group_add(NewGroup, NewGroupHost, Group, GroupHost) ->
+srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
   ?DEBUG("Adding group to display list.", []),
-
   Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
-  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
-  ok.
+  Label = get_opt(Opts, label, []),
+  Description = get_opt(Opts, label, []),
+  {DisplayedGroups, DisplayedGroupsOpt} = process_displayed_groups(GroupHost, Group, DisplayedGroups1),
 
-srg_display_group_del(DeleteGroup, DeleteGroupHost, Group, GroupHost) ->
-  ?DEBUG("Removing group from display list.", []),
-  Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
-%%  mod_shared_roster:set_group_opts(GroupHost, Group, Opts),
+  %% Update displayed groups
+  CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
+  AddedDisplayedGroups =  DisplayedGroups -- CurrentDisplayedGroups,
+  RemovedDisplayedGroups = CurrentDisplayedGroups -- DisplayedGroups,
+  OldMembers = mod_shared_roster:get_group_explicit_users(GroupHost, Group),
+  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
+  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
+
+%%  ?DEBUG("Options: ~p~n", [Label ++ Description ++ DisplayedGroupsOpt]),
+  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
+
   ok.
 
 srg_set_opts(Label1, Description1, Group, GroupHost) ->
@@ -167,7 +125,7 @@ srg_set_opts(Label1, Description1, Group, GroupHost) ->
   Displayed = if Displayed1 == [] -> [];
                   true -> [{displayed_groups, Displayed1}]
               end,
-  ?DEBUG("Options: ~p~n", [Label ++ Description ++ Displayed]),
+%%  ?DEBUG("Options: ~p~n", [Label ++ Description ++ Displayed]),
   mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ Displayed),
   ok.
 
@@ -176,34 +134,13 @@ mod_options(_) -> [].
 %% Description: Parses query received
 %% Input: Query formatted as in web admin query to change group options
 %% Output: Tuple with Label, Description, and DispGroups
-shared_roster_group_parse_query(Host, Group, Query) ->
-  case lists:keysearch(<<"submit">>, 1, Query) of
-    {value, _} ->
-      %%  Fetch value of submitted values
-      {value, {_, Label}} = lists:keysearch(<<"label">>, 1,
-        Query), %++
-      {value, {_, Description}} =
-        lists:keysearch(<<"description">>, 1, Query),
-      {value, {_, SMembers}} = lists:keysearch(<<"members">>,
-        1, Query),
-      {value, {_, SDispGroups}} =
-        lists:keysearch(<<"dispgroups">>, 1, Query),
-
-      %% Process found values
-      LabelOpt = if Label == <<"">> -> [];
-                   true -> [{label, Label}] %++
-                 end,
-      DescriptionOpt = if Description == <<"">> -> [];
-                         true -> [{description, Description}]
-                       end,
-      DispGroups1 = str:tokens(SDispGroups, <<"\r\n">>),  %% Split string by \r or \n
-      {DispGroups, WrongDispGroups} = filter_groups_existence(Host, DispGroups1),  %% Find which groups do not exist
-      DispGroupsOpt = if DispGroups == [] -> [];
-                        true -> [{displayed_groups, DispGroups}] %% Create property
-                      end,
-      {LabelOpt, DescriptionOpt, DispGroupsOpt};
-    _ -> nothing
-  end.
+process_displayed_groups(Host, Group, DisplayedGroups1) ->
+  DispGroups1 = str:tokens(DisplayedGroups1, <<"\r\n">>),  %% Split string by \r or \n
+  {DispGroups, WrongDispGroups} = filter_groups_existence(Host, DispGroups1),  %% Find which groups do not exist
+  DispGroupsOpt = if DispGroups == [] -> [];
+                    true -> [{displayed_groups, DispGroups}] %% Create property
+                  end,
+  {DispGroups, DispGroupsOpt}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Functions obtained from mod_shared_roster original code.
@@ -219,11 +156,78 @@ get_opt(Opts, Opt, Default) ->
     false -> Default
   end.
 
-split_grouphost(Host, Group) ->
-  case str:tokens(Group, <<"@">>) of
-    [GroupName, HostName] -> {HostName, GroupName};
-    [_] -> {Host, Group}
+get_displayed_groups(Group, LServer) ->
+  get_group_opt(LServer, Group, displayed_groups, []).
+
+
+get_group_opt(Host, Group, Opt, Default) ->
+  case mod_shared_roster:get_group_opts(Host, Group) of
+    error -> Default;
+    Opts ->
+      case lists:keysearch(Opt, 1, Opts) of
+        {value, {_, Val}} -> Val;
+        false -> Default
+      end
   end.
+
+displayed_groups_update(Members, DisplayedGroups, Subscription) ->
+  lists:foreach(
+    fun({U, S}) ->
+      push_displayed_to_user(U, S, S, Subscription, DisplayedGroups)
+    end, Members).
+
+
+push_displayed_to_user(LUser, LServer, Host, Subscription, DisplayedGroups) ->
+  [push_members_to_user(LUser, LServer, DGroup, Host,
+    Subscription)
+    || DGroup <- DisplayedGroups].
+
+push_members_to_user(LUser, LServer, Group, Host,
+    Subscription) ->
+  GroupOpts = mod_shared_roster:get_group_opts(LServer, Group),
+  GroupLabel = proplists:get_value(label, GroupOpts, Group), %++
+  Members = mod_shared_roster:get_group_users(Host, Group),
+  lists:foreach(fun ({U, S}) ->
+    N = get_rosteritem_name(U, S),
+    push_roster_item(LUser, LServer, U, S, N, GroupLabel,
+      Subscription)
+                end,
+    Members).
+
+push_roster_item(User, Server, ContactU, ContactS, ContactN,
+    GroupLabel, Subscription) ->
+  Item = #roster{usj =
+  {User, Server, {ContactU, ContactS, <<"">>}},
+    us = {User, Server}, jid = {ContactU, ContactS, <<"">>},
+    name = ContactN, subscription = Subscription, ask = none,
+    groups = [GroupLabel]},
+  push_item(User, Server, Item).
+
+push_item(User, Server, Item) ->
+  mod_roster:push_item(jid:make(User, Server),
+    Item#roster{subscription = none},
+    Item).
+
+get_rosteritem_name(U, S) ->
+  case gen_mod:is_loaded(S, mod_vcard) of
+    true ->
+      SubEls = mod_vcard:get_vcard(U, S),
+      get_rosteritem_name_vcard(SubEls);
+    false ->
+      <<"">>
+  end.
+
+-spec get_rosteritem_name_vcard([xmlel()]) -> binary().
+get_rosteritem_name_vcard([Vcard|_]) ->
+  case fxml:get_path_s(Vcard,
+    [{elem, <<"NICKNAME">>}, cdata])
+  of
+    <<"">> ->
+      fxml:get_path_s(Vcard, [{elem, <<"FN">>}, cdata]);
+    Nickname -> Nickname
+  end;
+get_rosteritem_name_vcard(_) ->
+  <<"">>.
 
 mod_doc() ->
   #{desc =>
