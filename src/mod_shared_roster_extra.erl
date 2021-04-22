@@ -85,9 +85,9 @@ srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
   ?DEBUG("Adding group to display list.", []),
   Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
   Label = get_opt(Opts, label, []),
-  Description = get_opt(Opts, label, []),
+  Description = get_opt(Opts, description, []),
   {DisplayedGroups, DisplayedGroupsOpt} = process_displayed_groups(GroupHost, DisplayedGroups1),
-  ?DEBUG("~n#########################~nDisplayed: ~p~n DisplayedOpt: ~p~n", [DisplayedGroups, DisplayedGroupsOpt]),
+  ?DEBUG("~n#########################~nDisplayed: ~p~nDisplayedOpt: ~p~n#########################", [DisplayedGroups, DisplayedGroupsOpt]),
 
   %% Update displayed groups
 %%  CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
@@ -97,7 +97,7 @@ srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
 %%  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
 %%  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
 
-  ?DEBUG("Options: ~p~n", [Label ++ Description ++ DisplayedGroupsOpt]),
+%%  ?DEBUG("Options: ~p~n", [Label ++ Description ++ DisplayedGroupsOpt]),
 %%  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
 
   ok.
