@@ -27,7 +27,7 @@
 -include("mod_shared_roster.hrl").
 -include("ejabberd_http.hrl").
 
--optional_callbacks([use_cache/1, cache_nodes/1]).
+%%-optional_callbacks([use_cache/1, cache_nodes/1]).
 
 -define(GROUP_OPTS_CACHE, shared_roster_group_opts_cache).
 -define(USER_GROUPS_CACHE, shared_roster_user_groups_cache).
