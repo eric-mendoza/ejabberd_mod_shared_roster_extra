@@ -86,25 +86,30 @@ srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
   Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
 
   %% Get group label and description
-  Label = get_opt(Opts, label, []),
-  Description = get_opt(Opts, description, []),
+  Label1 = get_opt(Opts, label, []),
+  Description1 = get_opt(Opts, description, []),
+  Label = if Label1 == <<"">> -> [];
+            true -> [{label, Label1}]
+          end,
+  Description = if Description1 == <<"">> -> [];
+                  true -> [{description, Description1}]
+                end,
   ?DEBUG("~n#########################~nGroup with options: ~p~n#########################~n", [Label ++ Description]),
 
   {DisplayedGroups, DisplayedGroupsOpt} = process_displayed_groups(GroupHost, DisplayedGroups1),
   ?DEBUG("~n#########################~nDisplayed: ~p~nDisplayedOpt: ~p~n#########################", [DisplayedGroups, DisplayedGroupsOpt]),
 
   %% Update displayed groups
-%%  CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
-%%  AddedDisplayedGroups =  DisplayedGroups -- CurrentDisplayedGroups,
-%%  RemovedDisplayedGroups = CurrentDisplayedGroups -- DisplayedGroups,
-%%  OldMembers = mod_shared_roster:get_group_explicit_users(GroupHost, Group),
-%%  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
-%%  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
+  CurrentDisplayedGroups = get_displayed_groups(Group, GroupHost),
+  AddedDisplayedGroups =  DisplayedGroups -- CurrentDisplayedGroups,
+  RemovedDisplayedGroups = CurrentDisplayedGroups -- DisplayedGroups,
+  OldMembers = mod_shared_roster:get_group_explicit_users(GroupHost, Group),
+  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
+  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
 
-%%  NewOpts = Label ++ Description ++ DisplayedGroupsOpt,
-%%  ?DEBUG("Options: ~p~n", [NewOpts]),
-%%  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
-
+  NewOpts = Label ++ Description ++ DisplayedGroupsOpt,
+  ?DEBUG("Options: ~p~n", [NewOpts]),
+  mod_shared_roster:set_group_opts(GroupHost, Group, Label ++ Description ++ DisplayedGroupsOpt),
   ok.
 
 srg_set_opts(Label1, Description1, Group, GroupHost) ->
