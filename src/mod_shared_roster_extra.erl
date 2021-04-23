@@ -82,7 +82,7 @@ get_commands_spec() ->
 %%% Shared Roster Groups
 %%%
 srg_set_displayed_groups(DisplayedGroups1, Group, GroupHost) ->
-  ?DEBUG("Adding group to display list.", []),
+  ?DEBUG("Adding group to display list: ~p~n", [DisplayedGroups1]),
   Opts = mod_shared_roster:get_group_opts(GroupHost, Group),
 
   %% Get group label and description
